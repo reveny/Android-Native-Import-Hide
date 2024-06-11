@@ -63,7 +63,7 @@ A single header version of the library is available for convenience. Simply incl
 
 ## Credits
 Special thanks to:
-- [ARandomPerson](https://github.com/ARandomPerson7) for the significant contribution and collaboration on this project.
+- [ARandomPerson](https://github.com/ARandomPerson7) for doing a lot of the work and the significant contribution and collaboration on this project.
 - [Ac3ss0r](https://github.com/ac3ss0r) for some inspiration from [ShellcodeLab](https://github.com/ac3ss0r/ShellcodeLab)
 - LSPlt for inspiration from their module listing implementation: [LSPlt](https://github.com/LSPosed/LSPlt)
 
