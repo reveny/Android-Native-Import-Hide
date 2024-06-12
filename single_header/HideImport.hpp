@@ -37,7 +37,7 @@
 
 #define HI_INLINE __attribute__((always_inline))
 
-#define HI_ENABLE_DEBUG 1
+#define HI_ENABLE_DEBUG 0
 #define HI_TAG "HideImport"
 #if HI_ENABLE_DEBUG
     #if defined(__ANDROID__)
@@ -99,6 +99,15 @@ private:
 #define HI_CALL(library, symbol, ret_type, ...) \
     reinterpret_cast<SimpleFunctionPointer<ret_type(__VA_ARGS__)>::Type>(HI_GET(library, #symbol))
 
+#define HI_GET_SAFE(library, symbol) \
+({ \
+    auto func = HI_GET(library, symbol); \
+    IS_FUNCTION_HOOKED(func) ? NULL : func; \
+})
+
+#define HI_CALL_SAFE(library, symbol, ret_type, ...) \
+    reinterpret_cast<SimpleFunctionPointer<ret_type(__VA_ARGS__)>::Type>(HI_GET_SAFE(library, #symbol))
+
 #if defined(__x86_64) || defined(aarch64)
     #define Elf_Ehdr Elf64_Ehdr
     #define Elf_Shdr Elf64_Shdr
@@ -110,6 +119,33 @@ private:
     #define Elf_Sym Elf32_Sym
     #define _ELF_ST_BIND(x) ELF32_ST_BIND(x)
 #endif
+
+// arm and arm64 only for now.
+// Detected on shadowhook, dobbyhook and and64inlinehook
+// TODO: Arm has not been fully tested on all hooking frameworks.
+#if defined(__aarch64__)
+    #define IS_LDR_X17(instr) (((instr) & 0xFF000000) == 0x58000000)
+    #define IS_BR_X17(instr) ((instr) == 0xd61f0220)
+    #define IS_HOOKED_CONDITION (IS_LDR_X17(instr1) && IS_BR_X17(instr2))
+#elif defined(__arm__)
+    #define IS_LDR_PC(instr) (((instr) & 0x0F7FF000) == 0x051FF000)
+    #define IS_BLX_R3(instr) ((instr) == 0xE12FFF33)
+    #define IS_HOOKED_CONDITION (IS_LDR_PC(instr1) && IS_BLX_R3(instr2))
+#else
+    #define IS_HOOKED_CONDITION 0
+#endif
+
+#define IS_FUNCTION_HOOKED(function) ({ \
+    uint32_t *addr = (uint32_t *)(function); \
+    uint32_t instr1 = *addr; \
+    uint32_t instr2 = *(addr + 1); \
+    int result = 0; \
+    if (IS_HOOKED_CONDITION) { \
+        uintptr_t *hook_addr_ptr = (uintptr_t *)(addr + 2); \
+        result = 1; \
+    } \
+    result; \
+})
 
 namespace HideImport {
     std::unordered_map<std::string, uintptr_t> symbolCache;
