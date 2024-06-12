@@ -7,6 +7,8 @@ A library for hiding and retrieving imports in ELF binaries.
 - [x] Cache resolved symbols for performance
 - [x] Thread-safe symbol resolution
 - [x] Detailed logging for debugging purposes
+- [x] Check hooking before calling (ARM and ARM64 only)
+- [ ] Prevent hooking completely 
 
 ## Build and Installation
 Compatible Compilers
@@ -58,8 +60,30 @@ int main() {
 }
 ```
 
+## Using `HI_SAFE`
+```cpp
+#include <stdio.h>
+#include "HideImport.hpp"
+
+int main() {
+    void *testMemory2 = HI_CALL_SAFE("libc.so", malloc, void*, size_t)(15);
+    printf("malloc test 2 returned: %p\n", testMemory2);
+    free(testMemory2);
+
+    return 0;
+}
+```
+The SAFE version will check if the function is hooked before calling. If the function happens to be hooked, the call will not be executed and return NULL.
+
 ## Single Header Library
 A single header version of the library is available for convenience. Simply include single_header/HideImport.hpp in your project.
+
+## Preview
+Disassembly without string encryption: <br>
+![Preview](https://github.com/reveny/Android-Native-Import-Hide/blob/main/images/preview.png)
+
+Disassembly with string encryption: <br>
+![Preview](https://github.com/reveny/Android-Native-Import-Hide/blob/main/images/preview1.png)
 
 ## Credits
 Special thanks to:
