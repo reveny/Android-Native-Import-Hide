@@ -83,7 +83,7 @@ Disassembly without string encryption: <br>
 ![Preview](https://github.com/reveny/Android-Native-Import-Hide/blob/main/images/preview.png)
 
 Disassembly with string encryption: <br>
-![Preview](https://github.com/reveny/Android-Native-Import-Hide/blob/main/images/preview1.png)
+![Preview](https://github.com/reveny/Android-Native-Import-Hide/blob/main/images/preview2.png)
 
 ## Credits
 Special thanks to:
