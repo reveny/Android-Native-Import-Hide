@@ -37,9 +37,9 @@
 
 #define HI_INLINE __attribute__((always_inline))
 
-#define HI_ENABLE_DEBUG 0
-#define HI_TAG "HideImport"
+#define HI_ENABLE_DEBUG 1
 #if HI_ENABLE_DEBUG
+    #define HI_TAG "HideImport"
     #if defined(__ANDROID__)
         #include <android/log.h>
         #define HI_LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, HI_TAG, __VA_ARGS__))

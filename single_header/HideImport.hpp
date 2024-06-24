@@ -38,8 +38,8 @@
 #define HI_INLINE __attribute__((always_inline))
 
 #define HI_ENABLE_DEBUG 0
-#define HI_TAG "HideImport"
 #if HI_ENABLE_DEBUG
+    #define HI_TAG "HideImport"
     #if defined(__ANDROID__)
         #include <android/log.h>
         #define HI_LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, HI_TAG, __VA_ARGS__))
@@ -291,13 +291,14 @@ namespace HideImport {
      */
     uintptr_t GetELFSymbolOffset(uintptr_t entryAddr, Elf_Ehdr *entryElf, const char* symbolName) {
         uintptr_t result = static_cast<uintptr_t>(-1);
+
         Elf_Shdr* sections = reinterpret_cast<Elf_Shdr*>(entryAddr + static_cast<uintptr_t>(entryElf->e_shoff));
         Elf_Shdr* symtab = nullptr;
 
         // Find the symbol table section
         for (int i = 0; i < entryElf->e_shnum; i++) {
             if (sections[i].sh_type == SHT_SYMTAB || sections[i].sh_type == SHT_DYNSYM) {
-                symtab = &sections[i];
+                symtab = sections + i;
                 break;
             }
         }
@@ -358,7 +359,12 @@ namespace HideImport {
         // Get the symbol offset and calculate the absolute address
         auto* elfEntry = static_cast<Elf_Ehdr*>(entryRaw);
         uintptr_t offset = GetELFSymbolOffset(reinterpret_cast<uintptr_t>(entryRaw), elfEntry, symbolName.c_str());
-        result = baseAddr + offset;
+        
+        if (offset != static_cast<uintptr_t>(-1)) {
+            result = (uintptr_t)baseAddr + offset;
+        } else {
+            result = 0;
+        }
 
         HI_LOGI("Found absolute address %p of symbol %s in %s", result, symbolName.c_str(), path.c_str());
 

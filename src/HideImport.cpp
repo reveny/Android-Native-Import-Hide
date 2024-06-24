@@ -132,12 +132,14 @@ uintptr_t HideImport::GetELFSymbolOffset(uintptr_t entryAddr, Elf_Ehdr *entryElf
     // Find the symbol table section
     for (int i = 0; i < entryElf->e_shnum; i++) {
         if (sections[i].sh_type == SHT_SYMTAB || sections[i].sh_type == SHT_DYNSYM) {
-            symtab = &sections[i];
+            // symtab = &sections[i];
+            symtab = sections + i;
             break;
         }
     }
 
     if (!symtab) {
+        HI_LOGE("Failed to resolve symtab.");
         return result;
     }
 
@@ -193,7 +195,12 @@ uintptr_t HideImport::MapELFFile(uintptr_t baseAddr, std::string path, std::stri
     // Get the symbol offset and calculate the absolute address
     auto* elfEntry = static_cast<Elf_Ehdr*>(entryRaw);
     uintptr_t offset = GetELFSymbolOffset(reinterpret_cast<uintptr_t>(entryRaw), elfEntry, symbolName.c_str());
-    result = baseAddr + offset;
+    
+    if (offset != static_cast<uintptr_t>(-1)) {
+        result = (uintptr_t)baseAddr + offset;
+    } else {
+        result = 0;
+    }
 
     HI_LOGI("Found absolute address %p of symbol %s in %s", result, symbolName.c_str(), path.c_str());
 
