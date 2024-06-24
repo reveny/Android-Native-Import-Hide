@@ -38,7 +38,7 @@
 #define HI_INLINE __attribute__((always_inline))
 
 #define HI_ENABLE_DEBUG 0
-#if HI_ENABLE_DEBUG
+    #if HI_ENABLE_DEBUG
     #define HI_TAG "HideImport"
     #if defined(__ANDROID__)
         #include <android/log.h>
@@ -108,7 +108,7 @@ private:
 #define HI_CALL_SAFE(library, symbol, ret_type, ...) \
     reinterpret_cast<SimpleFunctionPointer<ret_type(__VA_ARGS__)>::Type>(HI_GET_SAFE(library, #symbol))
 
-#if defined(__x86_64) || defined(aarch64)
+#if defined(__x86_64) || defined(__aarch64__)
     #define Elf_Ehdr Elf64_Ehdr
     #define Elf_Shdr Elf64_Shdr
     #define Elf_Sym Elf64_Sym
