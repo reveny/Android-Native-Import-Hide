@@ -3,7 +3,7 @@ A library for hiding and retrieving imports in ELF binaries.
 
 ## Features
 - [x] Hide and retrieve symbols in ELF binaries
-- [x] Support for multiple architectures (x86_64, ARM, ARM64)
+- [x] Support for multiple architectures (x86, x86_64, ARM, ARM64)
 - [x] Cache resolved symbols for performance
 - [x] Thread-safe symbol resolution
 - [x] Detailed logging for debugging purposes
