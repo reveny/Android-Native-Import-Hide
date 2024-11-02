@@ -175,7 +175,7 @@ uintptr_t HideImport::GetELFSymbolOffset(uintptr_t entryAddr, Elf_Ehdr *entryElf
 uintptr_t HideImport::MapELFFile(uintptr_t baseAddr, std::string path, std::string symbolName) {
     uintptr_t result = static_cast<uintptr_t>(-1);
 
-    int fd = syscall(__NR_open, path.c_str(), O_RDONLY);
+    int fd = syscall(__NR_openat, AT_FDCWD, path.c_str(), O_RDONLY);
     if (fd < 0) {
         return result;
     }
