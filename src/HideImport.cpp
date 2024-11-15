@@ -5,6 +5,8 @@
 //
 #include "HideImport.hpp"
 
+extern "C" long perform_syscall(long __number, ...);
+
 namespace HideImport {
     std::unordered_map<std::string, uintptr_t> symbolCache;
     std::mutex cacheMutex;
@@ -20,7 +22,7 @@ namespace HideImport {
  */
 std::vector<HideImport::Memory::MapInfo> HideImport::Memory::ListModulesNew() {
     std::vector<MapInfo> info;
-    int fd = syscall(__NR_openat, AT_FDCWD, "/proc/self/maps", O_RDONLY);
+    int fd = perform_syscall(__NR_openat, AT_FDCWD, "/proc/self/maps", O_RDONLY);
     if (fd == -1) {
         HI_LOGE("Failed to open /proc/self/maps with error: %s", strerror(errno));
         return info;
@@ -29,7 +31,7 @@ std::vector<HideImport::Memory::MapInfo> HideImport::Memory::ListModulesNew() {
     char buffer[4096];
     ssize_t bytesRead;
     std::string line;
-    while ((bytesRead = syscall(__NR_read, fd, buffer, sizeof(buffer) - 1)) > 0) {
+    while ((bytesRead = perform_syscall(__NR_read, fd, buffer, sizeof(buffer) - 1)) > 0) {
         buffer[bytesRead] = '\0';
         line += buffer;
 
@@ -175,7 +177,7 @@ uintptr_t HideImport::GetELFSymbolOffset(uintptr_t entryAddr, Elf_Ehdr *entryElf
 uintptr_t HideImport::MapELFFile(uintptr_t baseAddr, std::string path, std::string symbolName) {
     uintptr_t result = static_cast<uintptr_t>(-1);
 
-    int fd = syscall(__NR_openat, AT_FDCWD, path.c_str(), O_RDONLY);
+    int fd = perform_syscall(__NR_openat, AT_FDCWD, path.c_str(), O_RDONLY);
     if (fd < 0) {
         return result;
     }
@@ -186,7 +188,7 @@ uintptr_t HideImport::MapELFFile(uintptr_t baseAddr, std::string path, std::stri
         return result;
     }
 
-    void *entryRaw = (void *)syscall(__NR_mmap, NULL, static_cast<size_t>(elfStat.st_size), PROT_READ, MAP_SHARED, fd, 0);
+    void *entryRaw = (void *)perform_syscall(__NR_mmap, NULL, static_cast<size_t>(elfStat.st_size), PROT_READ, MAP_SHARED, fd, 0);
     if (entryRaw == MAP_FAILED) {
         close(fd);
         return result;
@@ -205,7 +207,7 @@ uintptr_t HideImport::MapELFFile(uintptr_t baseAddr, std::string path, std::stri
     HI_LOGI("Found absolute address %p of symbol %s in %s", result, symbolName.c_str(), path.c_str());
 
     // Clean up
-    syscall(__NR_munmap, entryRaw, static_cast<size_t>(elfStat.st_size));
+    perform_syscall(__NR_munmap, entryRaw, static_cast<size_t>(elfStat.st_size));
     close(fd);
 
     return result;
