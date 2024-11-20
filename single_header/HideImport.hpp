@@ -35,8 +35,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-extern "C" long perform_syscall(long __number, ...);
-
 #define HI_INLINE __attribute__((always_inline))
 
 #define HI_ENABLE_DEBUG 0
@@ -149,6 +147,116 @@ private:
     result; \
 })
 
+template <typename T>
+constexpr long to_long(const T& arg) {
+    if constexpr (std::is_pointer_v<T>) {
+        return reinterpret_cast<long>(arg); // Cast pointers to long
+    } else if constexpr (std::is_integral_v<T>) {
+        return static_cast<long>(arg); // Convert integral types to long
+    } else if constexpr (std::is_same_v<T, std::nullptr_t>) {
+        return 0; // Convert nullptr to 0
+    } else {
+        static_assert(!std::is_same_v<T, T>, "Unsupported argument type for syscall");
+    }
+}
+
+#define SYSCALL(...) inline_syscall(__VA_ARGS__)
+template <typename... Args>
+inline long inline_syscall(long syscall_number, Args... args) {
+    long ret;
+
+    long syscall_args[] = {to_long(args)...};
+    constexpr size_t num_args = sizeof...(Args);
+
+    #if defined(__x86_64__)
+        __asm__ volatile (
+            "mov %1, %%rax;"
+            "mov %2, %%rdi;"
+            "mov %3, %%rsi;"
+            "mov %4, %%rdx;"
+            "mov %5, %%r10;"
+            "mov %6, %%r8;"
+            "mov %7, %%r9;"
+            "syscall;"
+            "mov %%rax, %0;"
+            : "=r" (ret)
+            : "r" (syscall_number),
+            "r" (num_args > 0 ? syscall_args[0] : 0),
+            "r" (num_args > 1 ? syscall_args[1] : 0),
+            "r" (num_args > 2 ? syscall_args[2] : 0),
+            "r" (num_args > 3 ? syscall_args[3] : 0),
+            "r" (num_args > 4 ? syscall_args[4] : 0),
+            "r" (num_args > 5 ? syscall_args[5] : 0)
+            : "%rax", "%rdi", "%rsi", "%rdx", "%r10", "%r8", "%r9"
+        );
+    #elif defined(__i386__)
+        __asm__ volatile (
+            "mov %1, %%eax;"
+            "mov %2, %%ebx;"
+            "mov %3, %%ecx;"
+            "mov %4, %%edx;"
+            "mov %5, %%esi;"
+            "mov %6, %%edi;"
+            "int $0x80;"
+            "mov %%eax, %0;"
+            : "=r" (ret)
+            : "r" (syscall_number),
+            "r" (num_args > 0 ? syscall_args[0] : 0),
+            "r" (num_args > 1 ? syscall_args[1] : 0),
+            "r" (num_args > 2 ? syscall_args[2] : 0),
+            "r" (num_args > 3 ? syscall_args[3] : 0),
+            "r" (num_args > 4 ? syscall_args[4] : 0)
+            : "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi"
+        );
+    #elif defined(__arm__)
+        __asm__ volatile (
+            "mov r7, %1;"
+            "mov r0, %2;"
+            "mov r1, %3;"
+            "mov r2, %4;"
+            "mov r3, %5;"
+            "mov r4, %6;"
+            "mov r5, %7;"
+            "swi 0;"
+            "mov %0, r0;"
+            : "=r" (ret)
+            : "r" (syscall_number),
+            "r" (num_args > 0 ? syscall_args[0] : 0),
+            "r" (num_args > 1 ? syscall_args[1] : 0),
+            "r" (num_args > 2 ? syscall_args[2] : 0),
+            "r" (num_args > 3 ? syscall_args[3] : 0),
+            "r" (num_args > 4 ? syscall_args[4] : 0),
+            "r" (num_args > 5 ? syscall_args[5] : 0)
+            : "r0", "r1", "r2", "r3", "r4", "r5", "r7"
+        );
+    #elif defined(__aarch64__)
+        __asm__ volatile (
+            "mov x8, %1;"
+            "mov x0, %2;"
+            "mov x1, %3;"
+            "mov x2, %4;"
+            "mov x3, %5;"
+            "mov x4, %6;"
+            "mov x5, %7;"
+            "svc 0;"
+            "mov %0, x0;"
+            : "=r" (ret)
+            : "r" (syscall_number),
+            "r" (num_args > 0 ? syscall_args[0] : 0),
+            "r" (num_args > 1 ? syscall_args[1] : 0),
+            "r" (num_args > 2 ? syscall_args[2] : 0),
+            "r" (num_args > 3 ? syscall_args[3] : 0),
+            "r" (num_args > 4 ? syscall_args[4] : 0),
+            "r" (num_args > 5 ? syscall_args[5] : 0)
+            : "x0", "x1", "x2", "x3", "x4", "x5", "x8"
+        );
+    #else
+        #error "Unsupported architecture"
+    #endif
+
+    return ret;
+}
+
 namespace HideImport {
     std::unordered_map<std::string, uintptr_t> symbolCache;
     std::mutex cacheMutex;  // Mutex for thread safe access
@@ -186,7 +294,7 @@ namespace HideImport {
          */
         std::vector<MapInfo> ListModulesNew() {
             std::vector<MapInfo> info;
-            int fd = perform_syscall(__NR_openat, AT_FDCWD, "/proc/self/maps", O_RDONLY);
+            int fd = SYSCALL(__NR_openat, AT_FDCWD, "/proc/self/maps", O_RDONLY);
             if (fd == -1) {
                 HI_LOGE("Failed to open /proc/self/maps with error: %s", strerror(errno));
                 return info;
@@ -195,7 +303,7 @@ namespace HideImport {
             char buffer[4096];
             ssize_t bytesRead;
             std::string line;
-            while ((bytesRead = perform_syscall(__NR_read, fd, buffer, sizeof(buffer) - 1)) > 0) {
+            while ((bytesRead = SYSCALL(__NR_read, fd, buffer, sizeof(buffer) - 1)) > 0) {
                 buffer[bytesRead] = '\0';
                 line += buffer;
 
@@ -341,7 +449,7 @@ namespace HideImport {
     uintptr_t MapELFFile(uintptr_t baseAddr, std::string path, std::string symbolName) {
         uintptr_t result = static_cast<uintptr_t>(-1);
 
-        int fd = perform_syscall(__NR_openat, AT_FDCWD, path.c_str(), O_RDONLY);
+        int fd = SYSCALL(__NR_openat, AT_FDCWD, path.c_str(), O_RDONLY);
         if (fd < 0) {
             return result;
         }
@@ -352,7 +460,7 @@ namespace HideImport {
             return result;
         }
 
-        void *entryRaw = (void *)perform_syscall(__NR_mmap, NULL, static_cast<size_t>(elfStat.st_size), PROT_READ, MAP_SHARED, fd, 0);
+        void *entryRaw = (void *)SYSCALL(__NR_mmap, NULL, static_cast<size_t>(elfStat.st_size), PROT_READ, MAP_SHARED, fd, 0);
         if (entryRaw == MAP_FAILED) {
             close(fd);
             return result;
@@ -371,7 +479,7 @@ namespace HideImport {
         HI_LOGI("Found absolute address %p of symbol %s in %s", result, symbolName.c_str(), path.c_str());
 
         // Clean up
-        perform_syscall(__NR_munmap, entryRaw, static_cast<size_t>(elfStat.st_size));
+        SYSCALL(__NR_munmap, entryRaw, static_cast<size_t>(elfStat.st_size));
         close(fd);
 
         return result;

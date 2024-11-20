@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#define USE_SINGLE_HEADER 0
+#define USE_SINGLE_HEADER 1
 
 #if USE_SINGLE_HEADER
 #include "single_header/HideImport.hpp"
