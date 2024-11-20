@@ -35,6 +35,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+extern "C" long perform_syscall(long __number, ...);
+
 #define HI_INLINE __attribute__((always_inline))
 
 #define HI_ENABLE_DEBUG 0
@@ -184,7 +186,7 @@ namespace HideImport {
          */
         std::vector<MapInfo> ListModulesNew() {
             std::vector<MapInfo> info;
-            int fd = syscall(__NR_openat, AT_FDCWD, "/proc/self/maps", O_RDONLY);
+            int fd = perform_syscall(__NR_openat, AT_FDCWD, "/proc/self/maps", O_RDONLY);
             if (fd == -1) {
                 HI_LOGE("Failed to open /proc/self/maps with error: %s", strerror(errno));
                 return info;
@@ -193,7 +195,7 @@ namespace HideImport {
             char buffer[4096];
             ssize_t bytesRead;
             std::string line;
-            while ((bytesRead = syscall(__NR_read, fd, buffer, sizeof(buffer) - 1)) > 0) {
+            while ((bytesRead = perform_syscall(__NR_read, fd, buffer, sizeof(buffer) - 1)) > 0) {
                 buffer[bytesRead] = '\0';
                 line += buffer;
 
@@ -339,7 +341,7 @@ namespace HideImport {
     uintptr_t MapELFFile(uintptr_t baseAddr, std::string path, std::string symbolName) {
         uintptr_t result = static_cast<uintptr_t>(-1);
 
-        int fd = syscall(__NR_openat, AT_FDCWD, path.c_str(), O_RDONLY);
+        int fd = perform_syscall(__NR_openat, AT_FDCWD, path.c_str(), O_RDONLY);
         if (fd < 0) {
             return result;
         }
@@ -350,7 +352,7 @@ namespace HideImport {
             return result;
         }
 
-        void *entryRaw = (void *)syscall(__NR_mmap, NULL, static_cast<size_t>(elfStat.st_size), PROT_READ, MAP_SHARED, fd, 0);
+        void *entryRaw = (void *)perform_syscall(__NR_mmap, NULL, static_cast<size_t>(elfStat.st_size), PROT_READ, MAP_SHARED, fd, 0);
         if (entryRaw == MAP_FAILED) {
             close(fd);
             return result;
@@ -369,7 +371,7 @@ namespace HideImport {
         HI_LOGI("Found absolute address %p of symbol %s in %s", result, symbolName.c_str(), path.c_str());
 
         // Clean up
-        syscall(__NR_munmap, entryRaw, static_cast<size_t>(elfStat.st_size));
+        perform_syscall(__NR_munmap, entryRaw, static_cast<size_t>(elfStat.st_size));
         close(fd);
 
         return result;
