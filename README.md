@@ -1,6 +1,9 @@
 # Android-Native-Import-Hide
 A library for hiding and retrieving imports in ELF binaries.
 
+[![Stars](https://img.shields.io/github/stars/reveny/Android-Native-Import-Hide?label=Stars)](https://github.com/reveny)
+[![Channel](https://img.shields.io/badge/Telegram-Channel-blue.svg?logo=telegram)](https://t.me/reveny1)
+
 ## Features
 - [x] Hide and retrieve symbols in ELF binaries
 - [x] Support for multiple architectures (x86, x86_64, ARM, ARM64)
